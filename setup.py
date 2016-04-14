@@ -28,7 +28,7 @@ setup(
     url='https://github.com/openpermissions/koi',
     packages=['koi', 'certs'],
     include_package_data=True,
-    install_requires=["chub==0.2.6"],
+    install_requires=["chub==1.0.1"],
     dependency_links=[
         "git+ssh://git@github.com/openpermissions/chub.git@1.0.1#egg=chub-1.0.1"
     ],
