@@ -1,0 +1,11 @@
+click==3.3
+-e git://github.com/catapultbamboo/cloverpy.git@0.1#egg=cloverpy-0.1
+grip==3.2.0
+mock==1.3.0
+pylint==1.3.0
+pytest==2.8.7
+pytest-cov==1.7.0
+requests==2.4.1
+sphinx==1.2.3
+tornado==4.2.1
+-e git://github.com/openpermissions/chub.git@1.0.1#egg=chub-1.0.1
