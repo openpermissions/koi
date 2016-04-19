@@ -26,13 +26,25 @@ setup(
     author='Open Permissions Platform Coalition',
     author_email='support-copyrighthub@cde.catapult.org.uk',
     url='https://github.com/openpermissions/koi',
+    license='Apache 2.0',
+    classifiers=(
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'Natural Language :: English',
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: Implementation :: CPython',
+    )
     packages=['koi', 'certs'],
-    include_package_data=True,
     install_requires=["chub==1.0.1"],
     dependency_links=[
         "git+ssh://git@github.com/openpermissions/chub.git@1.0.1#egg=chub-1.0.1"
     ],
+    include_package_data=True,
     package_data={
+        '': [ 'LICENSE' ],
         'certs': ['*']
         }
+
     )
