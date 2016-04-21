@@ -83,7 +83,7 @@ sphinx:
 		-H $(SOURCE_DIR) \
 		-A "Open Permissions Platform Coalition" \
 		-o $(SPHINX_DIR) $(SOURCE_DIR)
-	patch $(SPHINX_DIR)/index.rst docs/index.patch
+	patch $(SPHINX_DIR)/index.rst docs/index.rst.patch
 
 html: sphinx
 	cd $(SPHINX_DIR) && PYTHONPATH=$(SERVICEDIR) make html BUILDDIR=$(IN_SOURCE_DOC_DIR)
