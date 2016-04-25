@@ -35,7 +35,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: Implementation :: CPython',
-    )
+    ),
     packages=['koi', 'certs'],
     install_requires=["chub==1.0.1"],
     dependency_links=[
