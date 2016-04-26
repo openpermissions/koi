@@ -6,7 +6,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-# 
+#
 
 import logging
 import os
@@ -91,7 +91,11 @@ def register_service(email, password, organisation_id, name=None,
         response = client.accounts.services[service_id].secrets.get()
         client_secrets = response['data']
     except httpclient.HTTPError as exc:
-        raise click.ClickException(click.style(exc.response.body, fg='red'))
+        try:
+            msg = exc.response.body
+        except AttributeError:
+            msg = exc.message
+        raise click.ClickException(click.style(msg, fg='red'))
     except socket.error as exc:
         raise click.ClickException(click.style(exc.strerror, fg='red'))
 
