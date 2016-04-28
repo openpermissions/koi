@@ -37,10 +37,7 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
     ),
     packages=['koi', 'certs'],
-    install_requires=["chub==1.0.1"],
-    dependency_links=[
-        "git+ssh://git@github.com/openpermissions/chub.git@1.0.1#egg=chub-1.0.1"
-    ],
+    install_requires=["opp-chub==1.0.5"],
     include_package_data=True,
     package_data={
         '': [ 'LICENSE' ],
