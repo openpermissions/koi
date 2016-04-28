@@ -20,7 +20,7 @@ if not version:
     raise RuntimeError('Cannot find version information')
 
 setup(
-    name='koi',
+    name='opp-koi',
     version=version,
     description='Helpers, utilities, anything else shared by copyright hub tornado applications',
     author='Open Permissions Platform Coalition',
