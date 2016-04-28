@@ -430,17 +430,17 @@ def test_verify_token_valid(API, options):
 
     client = Mock()
     API.return_value = client
-    client.authentication.verify.post.return_value = make_future({'status': 200, 'has_access': True})
+    client.auth.verify.post.return_value = make_future({'status': 200, 'has_access': True})
 
     result = yield handler.verify_token('token1234', 'r')
 
     assert result is True
-    API.assert_called_once_with(options.url_authentication,
+    API.assert_called_once_with(options.url_auth,
                                 auth_username='serviceid',
                                 auth_password='clientsecret',
                                 ca_certs=options.ssl_ca_cert)
-    assert client.authentication.verify.prepare_request.call_count == 1
-    client.authentication.verify.post.assert_called_once_with(
+    assert client.auth.verify.prepare_request.call_count == 1
+    client.auth.verify.post.assert_called_once_with(
         body='requested_access=r&token=token1234'
     )
 
@@ -455,17 +455,17 @@ def test_verify_token_invalid(API, options):
 
     client = Mock()
     API.return_value = client
-    client.authentication.verify.post.return_value = make_future({'status': 200, 'has_access': False})
+    client.auth.verify.post.return_value = make_future({'status': 200, 'has_access': False})
 
     result = yield handler.verify_token('token1234', 'r')
 
     assert result is False
-    API.assert_called_once_with(options.url_authentication,
+    API.assert_called_once_with(options.url_auth,
                                 auth_username='serviceid',
                                 auth_password='clientsecret',
                                 ca_certs=options.ssl_ca_cert)
-    assert client.authentication.verify.prepare_request.call_count == 1
-    client.authentication.verify.post.assert_called_once_with(
+    assert client.auth.verify.prepare_request.call_count == 1
+    client.auth.verify.post.assert_called_once_with(
         body='requested_access=r&token=token1234'
     )
 
@@ -477,7 +477,7 @@ def test_verify_token_raise_web_httperror(API, options):
     handler = mock_handler(base.AuthHandler)
     client = Mock()
     API.return_value = client
-    client.authentication.verify.post.side_effect = tornado.httpclient.HTTPError(401)
+    client.auth.verify.post.side_effect = tornado.httpclient.HTTPError(401)
 
     with pytest.raises(HTTPError) as exc:
         yield handler.verify_token('token1234', 'r')

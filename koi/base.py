@@ -193,7 +193,7 @@ class AuthHandler(RequestHandler):
         :param requested_access: the access level the client has requested
         :returns: boolean
         """
-        client = API(options.url_authentication,
+        client = API(options.url_auth,
                      auth_username=options.service_id,
                      auth_password=options.client_secret,
                      ca_certs=options.ssl_ca_cert)
@@ -201,10 +201,10 @@ class AuthHandler(RequestHandler):
                    'Accept': 'application/json'}
         body = urllib.urlencode({'token': token, 'requested_access': requested_access})
 
-        client.authentication.verify.prepare_request(headers=headers, request_timeout=180)
+        client.auth.verify.prepare_request(headers=headers, request_timeout=180)
 
         try:
-            result = yield client.authentication.verify.post(body=body)
+            result = yield client.auth.verify.post(body=body)
         except tornado.httpclient.HTTPError as ex:
             # Must be converted to a tornado.web.HTTPError for the server
             # to handle it correctly
