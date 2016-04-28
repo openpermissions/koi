@@ -20,7 +20,7 @@ from tornado.options import options
 from chub import API
 
 from .exceptions import HTTPError
-
+from .configure import ssl_server_options
 
 def _get_http_error(kwargs):
     if 'exc_info' in kwargs and hasattr(kwargs['exc_info'][1], 'errors'):
@@ -196,7 +196,7 @@ class AuthHandler(RequestHandler):
         client = API(options.url_auth,
                      auth_username=options.service_id,
                      auth_password=options.client_secret,
-                     ca_certs=options.ssl_ca_cert)
+                     ssl_options=ssl_server_options())
         headers = {'Content-Type': 'application/x-www-form-urlencoded',
                    'Accept': 'application/json'}
         body = urllib.urlencode({'token': token, 'requested_access': requested_access})
