@@ -24,7 +24,7 @@ setup(
     version=version,
     description='Helpers, utilities, anything else shared by copyright hub tornado applications',
     author='Open Permissions Platform Coalition',
-    author_email='support-copyrighthub@cde.catapult.org.uk',
+    author_email='support@openpermissions.org',
     url='https://github.com/openpermissions/koi',
     license='Apache 2.0',
     classifiers=(
