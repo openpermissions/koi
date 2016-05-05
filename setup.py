@@ -37,7 +37,7 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
     ),
     packages=['koi', 'certs'],
-    install_requires=["opp-chub>=1.0.1", "tornado>=4.2.0", "click"],
+    install_requires=["opp-chub>=1.0.5", "tornado>=4.2.0", "click"],
     include_package_data=True,
     package_data={
         '': [ 'LICENSE' ],

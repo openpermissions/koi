@@ -8,4 +8,4 @@ pytest-cov==1.7.0
 requests==2.4.1
 sphinx==1.2.3
 tornado==4.2.1
-git+https://github.com/openpermissions/chub.git@1.0.4
+opp-chub==1.0.5
