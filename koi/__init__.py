@@ -17,4 +17,4 @@ from .auth import auth_required
 from . import test_helpers
 from . import base
 
-__version__ = '1.0.8'
+__version__ = '1.0.9'
