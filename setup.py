@@ -22,7 +22,7 @@ if not version:
 setup(
     name='opp-koi',
     version=version,
-    description='Helpers, utilities, anything else shared by copyright hub tornado applications',
+    description='Helpers and utilities shared by OPP tornado applications',
     author='Open Permissions Platform Coalition',
     author_email='support@openpermissions.org',
     url='https://github.com/openpermissions/koi',

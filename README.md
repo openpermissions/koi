@@ -1,7 +1,7 @@
-Open Permissions Platform Tornado Library
-=========================================
+Koi
+===
 
-Helpers, utilities, anything else shared by copyright hub tornado applications
+A library used in Open Permissions Platform services providing helpers and utilities for tornado applications
 
 API Documentation
 -----------------
