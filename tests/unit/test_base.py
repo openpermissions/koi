@@ -23,7 +23,6 @@ from koi import base
 from koi.test_helpers import make_future, gen_test
 from koi.exceptions import HTTPError
 
-
 def setup_module(module):
     """Patch options and disable logging ounotput"""
     base_options = patch('koi.base.options').start()
@@ -419,10 +418,11 @@ def test_endpoint_access_no_match():
     assert exc.value.status_code == 500
 
 
+@patch('koi.base.ssl_server_options', return_value={'ca_certs': 'cer1234'})
 @patch('koi.base.options')
 @patch('koi.base.API')
 @gen_test
-def test_verify_token_valid(API, options):
+def test_verify_token_valid(API, options, ssl_server_options):
     options.service_id = 'serviceid'
     options.client_secret = 'clientsecret'
 
@@ -438,17 +438,18 @@ def test_verify_token_valid(API, options):
     API.assert_called_once_with(options.url_auth,
                                 auth_username='serviceid',
                                 auth_password='clientsecret',
-                                ca_certs=options.ssl_ca_cert)
+                                ssl_options={'ca_certs': 'cer1234'})
     assert client.auth.verify.prepare_request.call_count == 1
     client.auth.verify.post.assert_called_once_with(
         body='requested_access=r&token=token1234'
     )
 
 
+@patch('koi.base.ssl_server_options', return_value={'ca_certs': 'cer1234'})
 @patch('koi.base.options')
 @patch('koi.base.API')
 @gen_test
-def test_verify_token_invalid(API, options):
+def test_verify_token_invalid(API, options, ssl_server_options):
     options.service_id = 'serviceid'
     options.client_secret = 'clientsecret'
     handler = mock_handler(base.AuthHandler)
@@ -463,7 +464,7 @@ def test_verify_token_invalid(API, options):
     API.assert_called_once_with(options.url_auth,
                                 auth_username='serviceid',
                                 auth_password='clientsecret',
-                                ca_certs=options.ssl_ca_cert)
+                                ssl_options={'ca_certs': 'cer1234'})
     assert client.auth.verify.prepare_request.call_count == 1
     client.auth.verify.post.assert_called_once_with(
         body='requested_access=r&token=token1234'
