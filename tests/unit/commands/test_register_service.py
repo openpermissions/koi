@@ -129,6 +129,20 @@ class TestRegisterService:
         assert result.exit_code == 1
         assert result.output == 'Error: service type not defined\n'
 
+    @patch('koi.commands._update_local_conf')
+    @patch('koi.commands._get_client_secret')
+    @patch('koi.commands._create_service')
+    @patch('koi.commands._get_accounts_client', side_effect=click.ClickException(click.style('Error Message', fg='red')))
+    def test_register_service_click_error_accounts(self, _get_accounts_client, _create_service, _get_client_secret, _update_local_conf):
+        runner = CliRunner()
+        result = runner.invoke(register_service, ['test@example.com', 'password', 'organisation-id',
+                                                 '--name', 'service-name',
+                                                 '--service_type', 'service-type',
+                                                 '--accounts_url', 'accounts-url',
+                                                 '--location', 'https://example.com'])
+
+        assert result.exit_code == 1
+        assert result.output == 'Error: Error Message\n'
 
     @patch('koi.commands._update_local_conf')
     @patch('koi.commands._get_client_secret')
@@ -145,6 +159,20 @@ class TestRegisterService:
         assert result.exit_code == 1
         assert result.output == 'Error: HTTP 400: Error Message\n'
 
+    @patch('koi.commands._update_local_conf')
+    @patch('koi.commands._get_client_secret')
+    @patch('koi.commands._create_service', side_effect=click.ClickException(click.style('Error Message', fg='red')))
+    @patch('koi.commands._get_accounts_client')
+    def test_register_service_click_error_create_service(self, _get_accounts_client, _create_service, _get_client_secret, _update_local_conf):
+        runner = CliRunner()
+        result = runner.invoke(register_service, ['test@example.com', 'password', 'organisation-id',
+                                                 '--name', 'service-name',
+                                                 '--service_type', 'service-type',
+                                                 '--accounts_url', 'accounts-url',
+                                                 '--location', 'https://example.com'])
+
+        assert result.exit_code == 1
+        assert result.output == 'Error: Error Message\n'
 
     @patch('koi.commands._update_local_conf')
     @patch('koi.commands._get_client_secret')
@@ -161,6 +189,20 @@ class TestRegisterService:
         assert result.exit_code == 1
         assert result.output == 'Error: HTTP 400: Error Message\n'
 
+    @patch('koi.commands._update_local_conf')
+    @patch('koi.commands._get_client_secret', side_effect=click.ClickException(click.style('Error Message', fg='red')))
+    @patch('koi.commands._create_service')
+    @patch('koi.commands._get_accounts_client')
+    def test_register_service_click_error_get_client_secret(self, _get_accounts_client, _create_service, _get_client_secret, _update_local_conf):
+        runner = CliRunner()
+        result = runner.invoke(register_service, ['test@example.com', 'password', 'organisation-id',
+                                                 '--name', 'service-name',
+                                                 '--service_type', 'service-type',
+                                                 '--accounts_url', 'accounts-url',
+                                                 '--location', 'https://example.com'])
+
+        assert result.exit_code == 1
+        assert result.output == 'Error: Error Message\n'
 
     @patch('koi.commands._update_local_conf')
     @patch('koi.commands._get_client_secret', side_effect=HTTPError(400, message='Error Message'))
@@ -176,8 +218,6 @@ class TestRegisterService:
 
         assert result.exit_code == 1
         assert result.output == 'Error: HTTP 400: Error Message\n'
-
-
 
     @patch('koi.commands._update_local_conf')
     @patch('koi.commands._get_client_secret')
@@ -221,10 +261,11 @@ class TestGetAccountsClient:
         API.return_value = client
         client.accounts.login.post.side_effect = HTTPError(400, 'Error Message')
 
-        with pytest.raises(HTTPError) as exc:
+        with pytest.raises(click.ClickException) as exc:
             _get_accounts_client('accounts-url', 'email@example.com', 'password')
 
-        assert exc.value.message == 'HTTP 400: Error Message'
+        assert exc.value.message == ('\x1b[31mThere was a problem logging into the accounts service. '
+                                     'Please check your email and password.\x1b[0m')
 
 
 class TestCreateService:
@@ -252,6 +293,26 @@ class TestCreateService:
         assert not _get_service.called
         assert result == 'service-id'
 
+    @patch('koi.commands._get_service')
+    def test_create_service_404_error(self, _get_service):
+        client = MagicMock()
+        organisation_id = 'organisation-id'
+        name = 'service-name'
+        location = 'https://example.com'
+        service_type = 'external'
+
+        client.accounts.organisations = {'organisation-id': MagicMock()}
+        client.accounts.organisations[organisation_id].services.post.side_effect = HTTPError(404, 'Not Found')
+
+        with pytest.raises(click.ClickException) as exc:
+            _create_service(client, organisation_id, name, location, service_type)
+
+        client.accounts.organisations[organisation_id].services.post.assert_called_once_with(
+            name='service-name', location='https://example.com', service_type='external')
+        assert not _get_service.called
+        assert exc.value.message == ('\x1b[31mOrganisation organisation-id cannot be found. '
+                                     'Please check organisation_id.\x1b[0m')
+
     @patch('koi.commands._get_service', return_value='service-id')
     def test_create_service_already_created(self, _get_service):
         client = MagicMock()
@@ -270,9 +331,27 @@ class TestCreateService:
         _get_service.assert_called_once_with(client, 'organisation-id', 'service-name')
         assert result == 'service-id'
 
+    @patch('koi.commands._get_service', return_value=None)
+    def test_create_service_http_error_no_service(self, _get_service):
+        client = MagicMock()
+        organisation_id = 'organisation-id'
+        name = 'service-name'
+        location = 'https://example.com'
+        service_type = 'external'
+
+        client.accounts.organisations = {'organisation-id': MagicMock()}
+        client.accounts.organisations[organisation_id].services.post.side_effect = HTTPError(400, 'Error Message')
+
+        with pytest.raises(HTTPError) as exc:
+            _create_service(client, organisation_id, name, location, service_type)
+
+        client.accounts.organisations[organisation_id].services.post.assert_called_once_with(
+            name='service-name', location='https://example.com', service_type='external')
+        _get_service.assert_called_once_with(client, 'organisation-id', 'service-name')
+        assert exc.value.message == 'HTTP 400: Error Message'
 
     @patch('koi.commands._get_service', side_effect=HTTPError(400, 'Error Message'))
-    def test_create_service_http_error(self, _get_service):
+    def test_create_service_http_error_from_get_service(self, _get_service):
         client = MagicMock()
         organisation_id = 'organisation-id'
         name = 'service-name'
@@ -285,6 +364,9 @@ class TestCreateService:
         with pytest.raises(HTTPError) as exc:
             _create_service(client, organisation_id, name, location, service_type)
 
+        client.accounts.organisations[organisation_id].services.post.assert_called_once_with(
+            name='service-name', location='https://example.com', service_type='external')
+        _get_service.assert_called_once_with(client, 'organisation-id', 'service-name')
         assert exc.value.message == 'HTTP 400: Error Message'
 
 
@@ -308,7 +390,6 @@ class TestGetService:
         client.accounts.services.get.assert_called_once_with(organisation_id='organisation-id')
         assert result == 'service1'
 
-
     def test_get_service_multiple_names(self):
         client = MagicMock()
         organisation_id = 'organisation-id'
@@ -328,23 +409,20 @@ class TestGetService:
         client.accounts.services.get.assert_called_once_with(organisation_id='organisation-id')
         assert result == 'service1'
 
-
     def test_get_service_no_names(self):
-            client = MagicMock()
-            organisation_id = 'organisation-id'
-            name = 'service-name'
+        client = MagicMock()
+        organisation_id = 'organisation-id'
+        name = 'service-name'
 
-            client.accounts.services.get.return_value = {'status': 200, 'data': [
-                {
-                    'id': 'service1',
-                    'name': 'a-service-name'
-                }
-            ]}
+        client.accounts.services.get.return_value = {'status': 200, 'data': [
+            {
+                'id': 'service1',
+                'name': 'a-service-name'
+            }
+        ]}
 
-            with pytest.raises(click.ClickException):
-                _get_service(client, organisation_id, name)
-            client.accounts.services.get.assert_called_once_with(organisation_id='organisation-id')
-
+        result = _get_service(client, organisation_id, name)
+        assert result is None
 
     def test_get_service_no_results(self):
         client = MagicMock()
@@ -353,10 +431,21 @@ class TestGetService:
 
         client.accounts.services.get.return_value = {'status': 200, 'data': []}
 
-        with pytest.raises(click.ClickException):
-            _get_service(client, organisation_id, name)
-        client.accounts.services.get.assert_called_once_with(organisation_id='organisation-id')
+        result = _get_service(client, organisation_id, name)
+        assert result is None
 
+    def test_get_service_404_error(self):
+        client = MagicMock()
+        organisation_id = 'organisation-id'
+        name = 'service-name'
+
+        client.accounts.services.get.side_effect = HTTPError(404, message='Not Found')
+
+        with pytest.raises(click.ClickException) as exc:
+            _get_service(client, organisation_id, name)
+
+        assert exc.value.message == ('\x1b[31mOrganisation organisation-id cannot be found. '
+                                    'Please check organisation_id.\x1b[0m')
 
     def test_get_service_http_error(self):
         client = MagicMock()
@@ -394,6 +483,19 @@ class TestGetClientSecret:
         result = _get_client_secret(client, service_id)
 
         assert result is None
+
+
+    def test_get_client_secrets_404_error(self):
+        client = MagicMock()
+        client.accounts.services = {'service-123': MagicMock()}
+        service_id = 'service-123'
+
+        client.accounts.services[service_id].secrets.get.side_effect = HTTPError(404, message='Not Found')
+
+        with pytest.raises(click.ClickException) as exc:
+            _get_client_secret(client, service_id)
+
+        assert exc.value.message == '\x1b[31mService service-123 cannot be found.\x1b[0m'
 
 
     def test_get_client_secrets_http_error(self):

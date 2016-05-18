@@ -95,9 +95,14 @@ def _get_accounts_client(accounts_url, email, password):
     :return: Accounts Service API Client
     """
     client = API(accounts_url, async=False, validate_cert=False)
-    response = client.accounts.login.post(email=email, password=password)
-    client.default_headers['Authorization'] = response['data']['token']
-    return client
+    try:
+        response = client.accounts.login.post(email=email, password=password)
+        client.default_headers['Authorization'] = response['data']['token']
+        return client
+    except httpclient.HTTPError:
+        msg = ('There was a problem logging into the accounts service.'
+               ' Please check your email and password.')
+        raise click.ClickException(click.style(msg, fg='red'))
 
 
 def _create_service(client, organisation_id, name, location, service_type):
@@ -114,8 +119,17 @@ def _create_service(client, organisation_id, name, location, service_type):
         response = client.accounts.organisations[organisation_id].services.post(
             name=name, location=location, service_type=service_type)
         service_id = response['data']['id']
-    except httpclient.HTTPError:
-        service_id = _get_service(client, organisation_id, name)
+    except httpclient.HTTPError as exc:
+        if exc.code == 404:
+            # If error is a 404 then this means the organisation_id is not recognised. Raise this error immediately
+            msg = ('Organisation {} cannot be found. '
+                   'Please check organisation_id.'.format(organisation_id))
+            raise click.ClickException(click.style(msg, fg='red'))
+        else:
+            service_id = _get_service(client, organisation_id, name)
+            # If cannot find existing service, raise original error
+            if not service_id:
+                raise exc
 
     return service_id
 
@@ -128,15 +142,22 @@ def _get_service(client, organisation_id, name):
     :param name: Service Name
     :return: Service Id
     """
-    response = client.accounts.services.get(organisation_id=organisation_id)
+    try:
+        response = client.accounts.services.get(organisation_id=organisation_id)
+    except httpclient.HTTPError as exc:
+        if exc.code == 404:
+            # If error is a 404 then this means the organisation_id is not recognised. Raise this error immediately
+            msg = ('Organisation {} cannot be found. '
+                   'Please check organisation_id.'.format(organisation_id))
+            raise click.ClickException(click.style(msg, fg='red'))
+        else:
+            raise exc
+
     services = [s for s in response['data'] if s['name'] == name]
 
     if services:
         return services[0]['id']
-    else:
-        msg = ('Organisation {} does not '
-               'have a service named {}').format(organisation_id, name)
-        raise click.ClickException(click.style(msg, fg='red'))
+    return None
 
 
 def _get_client_secret(client, service_id):
@@ -146,7 +167,16 @@ def _get_client_secret(client, service_id):
     :param service_id: Service ID
     :return: Client secret (if available)
     """
-    response = client.accounts.services[service_id].secrets.get()
+    try:
+        response = client.accounts.services[service_id].secrets.get()
+    except httpclient.HTTPError as exc:
+        if exc.code == 404:
+            # If error is a 404 then this means the service_id is not recognised. Raise this error immediately
+            msg = ('Service {} cannot be found.'.format(service_id))
+            raise click.ClickException(click.style(msg, fg='red'))
+        else:
+            raise exc
+
     client_secrets = response['data']
     if client_secrets:
         return client_secrets[0]
