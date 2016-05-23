@@ -44,6 +44,8 @@ define('ssl_ca_cert', default=_default_certs_path('CA.crt'))
 define('ssl_key', default=_default_certs_path('localhost.key'))
 define('ssl_cert', default=_default_certs_path('localhost.crt'))
 define('ssl_cert_reqs', default=0)
+define('syslog_host', default='')
+define('syslog_port', default=514)
 
 
 def define_options(default_conf):
