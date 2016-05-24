@@ -68,28 +68,11 @@ def register_service(email, password, organisation_id, name=None,
         raise click.ClickException(click.style('service type not defined',
                                                fg='red'))
 
-    client = API(accounts_url, async=False, validate_cert=False)
     try:
-        response = client.accounts.login.post(email=email, password=password)
-        client.default_headers['Authorization'] = response.data['token']
-
-        try:
-            response = client.accounts.organisations[organisation_id].services.post(
-                name=name, location=location, service_type=service_type)
-            service_id = response['data']['id']
-        except httpclient.HTTPError:
-            response = client.accounts.services.get(organisation_id=organisation_id)
-            services = [s for s in response['data'] if s['name'] == name]
-
-            if services:
-                service_id = services[0]['id']
-            else:
-                msg = ('Organisation {} does not '
-                       'have a service named {}').format(organisation_id, name)
-                raise click.ClickException(click.style(msg, fg='red'))
-
-        response = client.accounts.services[service_id].secrets.get()
-        client_secrets = response['data']
+        client = _get_accounts_client(accounts_url, email, password)
+        service_id = _create_service(client, organisation_id, name, location, service_type)
+        client_secret = _get_client_secret(client, service_id)
+        _update_local_conf(config, service_id, client_secret)
     except httpclient.HTTPError as exc:
         try:
             msg = exc.response.body
@@ -99,21 +82,136 @@ def register_service(email, password, organisation_id, name=None,
     except socket.error as exc:
         raise click.ClickException(click.style(exc.strerror, fg='red'))
 
+    click.echo(click.style('\n{} service registered\n'.format(name),
+                           fg='green'))
+
+
+def _get_accounts_client(accounts_url, email, password):
+    """
+    Create an Accounts Service API client and log in using provided email and password
+    :param accounts_url: Accounts Service URL
+    :param email: Login Email
+    :param password: Login Password
+    :return: Accounts Service API Client
+    """
+    client = API(accounts_url, async=False, validate_cert=False)
+    try:
+        response = client.accounts.login.post(email=email, password=password)
+        client.default_headers['Authorization'] = response['data']['token']
+        return client
+    except httpclient.HTTPError:
+        msg = ('There was a problem logging into the accounts service.'
+               ' Please check your email and password.')
+        raise click.ClickException(click.style(msg, fg='red'))
+
+
+def _create_service(client, organisation_id, name, location, service_type):
+    """
+    Attempt to create service with given details. If service already exists look up existing service.
+    :param client: Accounts Service API Client
+    :param organisation_id: Id of Organisation
+    :param name: Service Name
+    :param location: Service Location
+    :param service_type: Service Type
+    :return: Service Id
+    """
+    try:
+        response = client.accounts.organisations[organisation_id].services.post(
+            name=name, location=location, service_type=service_type)
+        service_id = response['data']['id']
+    except httpclient.HTTPError as exc:
+        if exc.code == 404:
+            # If error is a 404 then this means the organisation_id is not recognised. Raise this error immediately
+            msg = ('Organisation {} cannot be found. '
+                   'Please check organisation_id.'.format(organisation_id))
+            raise click.ClickException(click.style(msg, fg='red'))
+        else:
+            service_id = _get_service(client, organisation_id, name)
+            # If cannot find existing service, raise original error
+            if not service_id:
+                raise exc
+
+    return service_id
+
+
+def _get_service(client, organisation_id, name):
+    """
+    Get service belonging to organisation which matches given service name
+    :param client: Accounts Service API Client
+    :param organisation_id: Id of Organisation
+    :param name: Service Name
+    :return: Service Id
+    """
+    try:
+        response = client.accounts.services.get(organisation_id=organisation_id)
+    except httpclient.HTTPError as exc:
+        if exc.code == 404:
+            # If error is a 404 then this means the organisation_id is not recognised. Raise this error immediately
+            msg = ('Organisation {} cannot be found. '
+                   'Please check organisation_id.'.format(organisation_id))
+            raise click.ClickException(click.style(msg, fg='red'))
+        else:
+            raise exc
+
+    services = [s for s in response['data'] if s['name'] == name]
+
+    if services:
+        return services[0]['id']
+    return None
+
+
+def _get_client_secret(client, service_id):
+    """
+    Get client secret for service
+    :param client: Accounts Service API Client
+    :param service_id: Service ID
+    :return: Client secret (if available)
+    """
+    try:
+        response = client.accounts.services[service_id].secrets.get()
+    except httpclient.HTTPError as exc:
+        if exc.code == 404:
+            # If error is a 404 then this means the service_id is not recognised. Raise this error immediately
+            msg = ('Service {} cannot be found.'.format(service_id))
+            raise click.ClickException(click.style(msg, fg='red'))
+        else:
+            raise exc
+
+    client_secrets = response['data']
+    if client_secrets:
+        return client_secrets[0]
+    return None
+
+
+def _update_local_conf(config, service_id, client_secret):
+    """
+    Update local.conf with service id and client secrets
+    :param config: Location of config files
+    :param service_id: Service ID
+    :param client_secret: Client Secret
+    """
+    lines = _get_existing_conf(config)
+    lines.append('\nservice_id = "{}"\n'.format(service_id))
+    if client_secret:
+        lines.append('client_secret = "{}"\n'.format(client_secret))
+
+    with open(os.path.join(config, 'local.conf'), 'w') as f:
+        f.writelines(lines)
+
+
+def _get_existing_conf(config):
+    """
+    Read existing local.conf and strip out service id and client secret
+    :param config: Location of config files
+    :param lines of existing config (excluding service id and client secret)
+    """
     try:
         with open(os.path.join(config, 'local.conf'), 'r') as f:
             lines = [line for line in f.readlines()
                      if not (line.startswith('service_id') or line.startswith('client_secret'))]
     except IOError:
         lines = []
-
-    lines.append('\nservice_id = "{}"\n'.format(service_id))
-    if client_secrets:
-        lines.append('client_secret = "{}"\n'.format(client_secrets[0]))
-    with open(os.path.join(config, 'local.conf'), 'w') as f:
-        f.writelines(lines)
-
-    click.echo(click.style('\n{} service registered\n'.format(name),
-                           fg='green'))
+    return lines
 
 
 def _options():
