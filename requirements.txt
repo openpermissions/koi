@@ -1,6 +1,6 @@
 click==3.3
 cloverpy==0.1.1
-grip==3.2.0
+grip==4.3.2
 mock==1.3.0
 pylint==1.3.0
 pytest==2.8.7
