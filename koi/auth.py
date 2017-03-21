@@ -37,13 +37,34 @@ def auth_required(validator):
 
     :param validator: a coroutine that will validate the token and return True/False
     """
-    def _auth_decorator(handler):
+    def _auth_required_decorator(handler):
         if inspect.isclass(handler):
             return _wrap_class(handler, validator)
         return _auth_required(handler, validator)
 
-    return _auth_decorator
+    return _auth_required_decorator
 
+def auth_optional(validator):
+    """Decorate a RequestHandler or method to accept optional authentication token
+
+    If decorating a coroutine make sure coroutine decorator is first.
+    eg.::
+
+        class Handler(tornado.web.RequestHandler):
+
+            @auth_required(validator)
+            @coroutine
+            def get(self):
+                pass
+
+    :param validator: a coroutine that will validate the token and return True/False
+    """
+    def _auth_optional_decorator(handler):
+        if inspect.isclass(handler):
+            return _wrap_class(handler, validator)
+        return _auth_optional(handler, validator)
+
+    return _auth_optional_decorator
 
 def _wrap_class(request_handler, validator):
     """Decorate each HTTP verb method to check if the request is authenticated
@@ -71,6 +92,17 @@ def _get_token(request):
         raise HTTPError(401, message)
     return token
 
+def _get_optional_token(request):
+    """
+    Gets authentication token from request header
+    Returns None if token not found
+    :return token: an authorization token.
+    """
+    token = request.headers.get('Authorization')
+    if not token:
+        return None
+    else:
+        return token
 
 def _auth_required(method, validator):
     """Decorate a HTTP verb method and check the request is authenticated
@@ -97,6 +129,32 @@ def _auth_required(method, validator):
 
     return wrapper
 
+def _auth_optional(method, validator):
+    """Decorate a HTTP verb method and look for optional authentication
+
+    :param method: a tornado.web.RequestHandler method
+    :param validator: a token validation coroutine, that should return
+    True/False depending if token is or is not valid
+    """
+    @gen.coroutine
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        token = _get_optional_token(self.request)
+        if token is not None:
+            valid_token = yield validator(token)
+            if not valid_token:
+                message = 'Invalid token: {}'.format(token)
+                logging.warning(message)
+                raise HTTPError(401, message)
+
+        result = method(self, *args, **kwargs)
+
+        if isinstance(result, Future):
+            result = yield result
+
+        raise gen.Return(result)
+
+    return wrapper
 
 def authorized(validator):
     """Decorate a RequestHandler or method to require that a request is authorized
